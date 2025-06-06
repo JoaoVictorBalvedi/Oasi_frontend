@@ -7,11 +7,12 @@ import Button from "../components/button";
 import Link from 'next/link';
 import Image from 'next/image';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../context/AuthContext';
 
 interface Cart {
   id: number;
   nome: string;
-  proposito: string | null;
+  proposito?: string;
   criado_em: string;
 }
 
@@ -24,7 +25,7 @@ interface ProductInCart {
 }
 
 export default function CarrinhosPage() {
-  const userId = 1;
+  const { user } = useAuth();
 
   const [userCarts, setUserCarts] = useState<Cart[]>([]);
   const [isLoadingCarts, setIsLoadingCarts] = useState(true);
@@ -37,11 +38,16 @@ export default function CarrinhosPage() {
 
   useEffect(() => {
     const fetchUserCarts = async () => {
+      if (!user?.id) return;
+      
       setIsLoadingCarts(true);
       setCartsMessage(null);
       try {
-        const response = await fetch(`http://localhost:3001/api/users/${userId}/carts`);
-        if (!response.ok) throw new Error('Falha ao buscar carrinhos.');
+        const response = await fetch(`http://localhost:3001/api/users/${user.id}/carts`);
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Falha ao buscar carrinhos.');
+        }
         const data = await response.json();
         setUserCarts(data);
       } catch (error: any) {
@@ -52,7 +58,7 @@ export default function CarrinhosPage() {
       }
     };
     fetchUserCarts();
-  }, [userId]);
+  }, [user?.id]);
 
   const handleToggleCartDetails = async (cartId: number) => {
     if (selectedCartId === cartId) {
@@ -69,7 +75,10 @@ export default function CarrinhosPage() {
 
     try {
       const response = await fetch(`http://localhost:3001/api/carts/${cartId}/products-details`);
-      if (!response.ok) throw new Error(`Falha ao buscar produtos do carrinho ${cartId}.`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `Falha ao buscar produtos do carrinho ${cartId}.`);
+      }
       const data: ProductInCart[] = await response.json();
       setSelectedCartProducts(data);
       if (data.length === 0) {
@@ -79,6 +88,36 @@ export default function CarrinhosPage() {
       setProductsMessage({ text: error.message || 'Erro ao carregar produtos do carrinho.', type: 'error' });
     } finally {
       setIsLoadingProducts(false);
+    }
+  };
+
+  const handleDeleteCart = async (cartId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este carrinho?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/carts/${cartId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Falha ao excluir carrinho.');
+      }
+
+      setCartsMessage({ text: 'Carrinho excluído com sucesso!', type: 'success' });
+      if (selectedCartId === cartId) {
+        setSelectedCartId(null);
+        setSelectedCartProducts([]);
+      }
+      if (user?.id) {
+        const updatedResponse = await fetch(`http://localhost:3001/api/users/${user.id}/carts`);
+        if (updatedResponse.ok) {
+          const updatedData = await updatedResponse.json();
+          setUserCarts(updatedData);
+        }
+      }
+    } catch (error: any) {
+      setCartsMessage({ text: error.message || 'Erro ao excluir carrinho.', type: 'error' });
     }
   };
 
@@ -133,6 +172,102 @@ export default function CarrinhosPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {cartsMessage && (
+          <div className={`mb-4 p-4 rounded-lg ${
+            cartsMessage.type === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+          }`}>
+            {cartsMessage.text}
+          </div>
+        )}
+
+        <div className="space-y-6">
+          {isLoadingCarts ? (
+            <p className="text-gray-300">Carregando carrinhos...</p>
+          ) : userCarts.length === 0 ? (
+            <p className="text-gray-300">Você ainda não tem nenhum carrinho.</p>
+          ) : (
+            userCarts.map(cart => (
+              <div key={cart.id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                <div className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white mb-2">{cart.nome}</h2>
+                      {cart.proposito && (
+                        <p className="text-gray-300 mb-2">{cart.proposito}</p>
+                      )}
+                      <p className="text-sm text-gray-400">
+                        Criado em: {new Date(cart.criado_em).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleToggleCartDetails(cart.id)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {selectedCartId === cart.id ? 'Ocultar' : 'Ver Produtos'}
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteCart(cart.id)}
+                        variant="danger"
+                        size="sm"
+                      >
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+
+                  {selectedCartId === cart.id && (
+                    <div className="mt-6 border-t border-gray-700 pt-6">
+                      {isLoadingProducts ? (
+                        <p className="text-gray-300">Carregando produtos...</p>
+                      ) : productsMessage ? (
+                        <p className={`text-${productsMessage.type === 'success' ? 'green' : 'red'}-400`}>
+                          {productsMessage.text}
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {selectedCartProducts.map(product => (
+                            <div key={product.id} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
+                              <div className="flex items-center gap-4">
+                                {product.imagem_url && (
+                                  <div className="relative w-16 h-16">
+                                    <Image
+                                      src={product.imagem_url}
+                                      alt={product.nome}
+                                      fill
+                                      className="object-cover rounded-lg"
+                                    />
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="text-white font-medium">{product.nome}</h3>
+                                  <p className="text-sm text-gray-300">
+                                    Quantidade: {product.quantidade}
+                                  </p>
+                                  <p className="text-green-400 font-semibold">
+                                    R$ {product.preco.toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-white">
+                                  R$ {(product.preco * product.quantidade).toFixed(2)}
+                                </p>
+                                <p className="text-sm text-gray-400">Total</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </ProtectedRoute>
