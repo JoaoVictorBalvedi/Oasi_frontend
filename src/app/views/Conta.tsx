@@ -1,0 +1,157 @@
+// src/app/conta/page.tsx
+"use client"; // ESSENCIAL para usar hooks como useState e useEffect
+
+import React, { useState, useEffect, FormEvent } from 'react';
+import SectionTitle from "../components/SectionTitle"; // Ajuste o caminho se necessário
+import Button from "../components/button";       // Ajuste o caminho se necessário
+
+// Componente local simples para inputs do formulário
+const FormInput = ({ label, type = 'text', id, value, placeholder, onChange, disabled = false }: {
+  label: string;
+  type?: string;
+  id: string;
+  value: string; // Agora é controlado
+  placeholder?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  disabled?: boolean;
+}) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">
+      {label}
+    </label>
+    <input
+      type={type}
+      id={id}
+      name={id}
+      value={value} // Controlado pelo estado
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+      disabled={disabled}
+    />
+  </div>
+);
+
+export default function ContaPage() {
+  // ID do usuário fixo para este exemplo, já que não temos login
+  const userId = 1;
+
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  // Buscar dados do usuário ao carregar a página
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setIsLoading(true);
+      setMessage(null);
+      try {
+        const response = await fetch(`http://localhost:3001/api/users/${userId}`); // Use a porta do seu backend
+        if (!response.ok) {
+          throw new Error('Falha ao buscar dados do usuário. Verifique se o ID do usuário existe no banco.');
+        }
+        const data = await response.json();
+        setNome(data.nome || '');
+        setEmail(data.email || '');
+        setTelefone(data.telefone || '');
+      } catch (error: any) {
+        console.error("Erro ao buscar dados:", error);
+        setMessage({ text: error.message || 'Erro ao carregar dados. Tente novamente.', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [userId]); // Dependência: userId (embora fixo, é uma boa prática)
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nome, email, telefone }),
+      });
+
+      const data = await response.json(); // Tenta ler a resposta mesmo se não for ok, para pegar a mensagem de erro do backend
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Falha ao atualizar dados. Tente novamente.');
+      }
+      
+      setMessage({ text: data.message || 'Dados atualizados com sucesso!', type: 'success' });
+
+    } catch (error: any) {
+      console.error("Erro ao atualizar dados:", error);
+      setMessage({ text: error.message || 'Erro ao atualizar dados. Tente novamente.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading && !nome && !email) { // Mostra loading inicial apenas se não houver dados ainda
+    return (
+      <div className="container mx-auto px-4 sm:px-6 py-8 text-center">
+        <p className="text-xl">Carregando dados da conta...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 sm:px-6 py-8">
+      <SectionTitle>Minha Conta</SectionTitle>
+
+      <div className="mt-8 max-w-2xl mx-auto bg-gray-800 p-6 sm:p-8 rounded-lg shadow-xl">
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-6">
+            {message && (
+              <div className={`p-3 rounded-md ${message.type === 'success' ? 'bg-green-700 text-green-100' : 'bg-red-700 text-red-100'}`}>
+                {message.text}
+              </div>
+            )}
+            <FormInput
+              label="Nome Completo"
+              id="nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Seu nome completo"
+              disabled={isLoading}
+            />
+            <FormInput
+              label="Endereço de Email"
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seuemail@exemplo.com"
+              disabled={isLoading}
+            />
+            <FormInput
+              label="Telefone"
+              type="tel"
+              id="telefone"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              placeholder="(XX) XXXXX-XXXX"
+              disabled={isLoading}
+            />
+            {/* Campos de senha foram removidos para simplificar, pois não estão na tabela e exigem hashing */}
+            <div className="pt-4">
+              <Button type="submit" fullWidth disabled={isLoading}>
+                {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
