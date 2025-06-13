@@ -25,7 +25,7 @@ interface ProductInCart {
 }
 
 export default function CarrinhosPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [userCarts, setUserCarts] = useState<Cart[]>([]);
   const [isLoadingCarts, setIsLoadingCarts] = useState(true);
@@ -91,12 +91,78 @@ export default function CarrinhosPage() {
     }
   };
 
+  const handleRemoveProduct = async (cartId: number, productId: number) => {
+    if (!token) {
+      setProductsMessage({ text: 'Você precisa estar logado para remover produtos.', type: 'error' });
+      return;
+    }
+    if (!confirm('Tem certeza que deseja remover este produto do carrinho?')) return;
+    try {
+      const response = await fetch(`http://localhost:3001/api/carts/${cartId}/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Falha ao remover produto do carrinho.');
+      }
+
+      const result = await response.json();
+      
+      // Atualiza a lista de produtos do carrinho
+      const updatedProducts = selectedCartProducts.filter(p => p.id !== productId);
+      setSelectedCartProducts(updatedProducts);
+      
+      // Se o carrinho ficou vazio, atualiza a mensagem mas mantém o carrinho visível
+      if (result.produtos_restantes === 0) {
+        setProductsMessage({ text: 'Este carrinho está vazio.', type: 'success' });
+      } else {
+        setProductsMessage({ text: 'Produto removido do carrinho com sucesso!', type: 'success' });
+      }
+
+      // Atualiza a lista de produtos do carrinho selecionado
+      const productsResponse = await fetch(`http://localhost:3001/api/carts/${cartId}/products-details`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        setSelectedCartProducts(productsData);
+      }
+      
+      // Atualiza a lista de carrinhos sem remover o carrinho vazio
+      if (user?.id) {
+        const updatedResponse = await fetch(`http://localhost:3001/api/users/${user.id}/carts`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (updatedResponse.ok) {
+          const updatedData = await updatedResponse.json();
+          setUserCarts(updatedData);
+        }
+      }
+    } catch (error: any) {
+      setProductsMessage({ text: error.message || 'Erro ao remover produto do carrinho.', type: 'error' });
+    }
+  };
+
   const handleDeleteCart = async (cartId: number) => {
+    if (!token) {
+      setCartsMessage({ text: 'Você precisa estar logado para excluir carrinho.', type: 'error' });
+      return;
+    }
     if (!confirm('Tem certeza que deseja excluir este carrinho?')) return;
 
     try {
       const response = await fetch(`http://localhost:3001/api/carts/${cartId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {
@@ -105,12 +171,21 @@ export default function CarrinhosPage() {
       }
 
       setCartsMessage({ text: 'Carrinho excluído com sucesso!', type: 'success' });
+      
+      // Se o carrinho excluído era o selecionado, limpa a seleção
       if (selectedCartId === cartId) {
         setSelectedCartId(null);
         setSelectedCartProducts([]);
+        setProductsMessage(null);
       }
+
+      // Atualiza a lista de carrinhos
       if (user?.id) {
-        const updatedResponse = await fetch(`http://localhost:3001/api/users/${user.id}/carts`);
+        const updatedResponse = await fetch(`http://localhost:3001/api/users/${user.id}/carts`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (updatedResponse.ok) {
           const updatedData = await updatedResponse.json();
           setUserCarts(updatedData);
@@ -223,44 +298,51 @@ export default function CarrinhosPage() {
                     <div className="mt-6 border-t border-gray-700 pt-6">
                       {isLoadingProducts ? (
                         <p className="text-gray-300">Carregando produtos...</p>
-                      ) : productsMessage ? (
-                        <p className={`text-${productsMessage.type === 'success' ? 'green' : 'red'}-400`}>
-                          {productsMessage.text}
-                        </p>
                       ) : (
-                        <div className="space-y-4">
-                          {selectedCartProducts.map(product => (
-                            <div key={product.id} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
-                              <div className="flex items-center gap-4">
-                                {product.imagem_url && (
-                                  <div className="relative w-16 h-16">
-                                    <Image
-                                      src={product.imagem_url}
-                                      alt={product.nome}
-                                      fill
-                                      className="object-cover rounded-lg"
-                                    />
+                        selectedCartProducts.length === 0 ? (
+                          <p className="text-green-400">Este carrinho está vazio.</p>
+                        ) : (
+                          <div className="space-y-4">
+                            {selectedCartProducts.map(product => (
+                              <div key={product.id} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
+                                <div className="flex items-center gap-4">
+                                  {product.imagem_url && (
+                                    <div className="relative w-16 h-16">
+                                      <Image
+                                        src={product.imagem_url}
+                                        alt={product.nome}
+                                        fill
+                                        className="object-cover rounded-lg"
+                                      />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <h3 className="text-white font-medium">{product.nome}</h3>
+                                    <p className="text-sm text-gray-300">
+                                      Quantidade: {product.quantidade}
+                                    </p>
+                                    <p className="text-green-400 font-semibold">
+                                      R$ {product.preco.toFixed(2)}
+                                    </p>
                                   </div>
-                                )}
-                                <div>
-                                  <h3 className="text-white font-medium">{product.nome}</h3>
-                                  <p className="text-sm text-gray-300">
-                                    Quantidade: {product.quantidade}
+                                </div>
+                                <div className="text-right flex flex-col items-end gap-2">
+                                  <p className="text-lg font-bold text-white">
+                                    R$ {(product.preco * product.quantidade).toFixed(2)}
                                   </p>
-                                  <p className="text-green-400 font-semibold">
-                                    R$ {product.preco.toFixed(2)}
-                                  </p>
+                                  <p className="text-sm text-gray-400">Total</p>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => handleRemoveProduct(cart.id, product.id)}
+                                  >
+                                    Remover
+                                  </Button>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-white">
-                                  R$ {(product.preco * product.quantidade).toFixed(2)}
-                                </p>
-                                <p className="text-sm text-gray-400">Total</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )
                       )}
                     </div>
                   )}

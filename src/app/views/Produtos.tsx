@@ -8,76 +8,23 @@ import ProductCard from "../components/ProductCard";
 
 // Interface para o produto como vem da API
 interface Product {
-  id: number; // No banco é número
+  id: number;
   nome: string;
   preco: number;
   nivel_sustentabilidade?: number;
   descricao?: string;
   imagem_url: string;
-  // id_vendedor e outros campos se a API retornar
 }
 
-// Mapeamento de produtos com suas imagens locais
+// Mapeamento de produtos com suas imagens
 const productImages: { [key: string]: string } = {
-  'Caderno Sustentável': '/caderno.webp',
-  'Vaso de Plástico Reciclado': '/vaso.webp',
-  'Canudo de Bambu': '/canudo.webp',
-  'Garrafa Térmica': '/garrafa.webp',
-  'Escova de Dentes de Bambu': '/escova.webp',
-  'Eco Bag': '/ecobag.webp',
+  'Ecobag de Algodão Orgânico': '/images/ecobag-algodao.jpg',
+  'Kit Escovas de Dente de Bambu (4un)': '/images/kit-escovas-bambu.jpg',
+  'Garrafa Térmica Inox Sustentável': '/images/garrafa-inox.jpg',
+  'Canudos de Inox Reutilizáveis (Kit)': '/images/canudos-inox.jpg',
+  'Vaso Auto Irrigável Pequeno': '/images/vaso-autoirrigavel.jpg',
+  'Caderno Ecológico Reciclado': '/images/caderno-reciclado.jpg'
 };
-
-// Produtos de exemplo para demonstração
-const sampleProducts: Product[] = [
-  {
-    id: 1,
-    nome: 'Caderno Sustentável',
-    preco: 29.90,
-    nivel_sustentabilidade: 4.5,
-    descricao: 'Caderno feito com papel reciclado',
-    imagem_url: '/caderno.webp'
-  },
-  {
-    id: 2,
-    nome: 'Vaso de Plástico Reciclado',
-    preco: 45.00,
-    nivel_sustentabilidade: 4.8,
-    descricao: 'Vaso feito com plástico 100% reciclado',
-    imagem_url: '/vaso.webp'
-  },
-  {
-    id: 3,
-    nome: 'Canudo de Bambu',
-    preco: 15.90,
-    nivel_sustentabilidade: 5.0,
-    descricao: 'Canudo reutilizável de bambu',
-    imagem_url: '/canudo.webp'
-  },
-  {
-    id: 4,
-    nome: 'Garrafa Térmica',
-    preco: 89.90,
-    nivel_sustentabilidade: 4.7,
-    descricao: 'Garrafa térmica sustentável',
-    imagem_url: '/garrafa.webp'
-  },
-  {
-    id: 5,
-    nome: 'Escova de Dentes de Bambu',
-    preco: 19.90,
-    nivel_sustentabilidade: 4.9,
-    descricao: 'Escova de dentes ecológica',
-    imagem_url: '/escova.webp'
-  },
-  {
-    id: 6,
-    nome: 'Eco Bag',
-    preco: 39.90,
-    nivel_sustentabilidade: 4.6,
-    descricao: 'Sacola ecológica reutilizável',
-    imagem_url: '/ecobag.webp'
-  }
-];
 
 export default function ProdutosPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -89,18 +36,18 @@ export default function ProdutosPage() {
       setIsLoading(true);
       setError(null);
       try {
+        console.log('Fetching products from API...');
         const response = await fetch('http://localhost:3001/api/products');
+        console.log('API Response status:', response.status);
         if (!response.ok) {
-          // Se a API não estiver disponível, use os produtos de exemplo
-          setAllProducts(sampleProducts);
-          return;
+          throw new Error('Falha ao carregar produtos');
         }
         const data: Product[] = await response.json();
+        console.log('Products loaded:', data);
         setAllProducts(data);
       } catch (err: any) {
-        // Em caso de erro, use os produtos de exemplo
-        setAllProducts(sampleProducts);
-        console.log('Usando produtos de exemplo devido ao erro:', err.message);
+        setError(err.message);
+        console.error('Erro ao carregar produtos:', err);
       } finally {
         setIsLoading(false);
       }
@@ -115,7 +62,7 @@ export default function ProdutosPage() {
         <SectionTitle>Todos os Nossos Produtos</SectionTitle>
       </div>
 
-      <SearchBar /> {/* A funcionalidade de busca virá depois */}
+      <SearchBar />
 
       {isLoading && <p className="text-center text-gray-400 mt-10">Carregando produtos...</p>}
       {error && <p className="text-center text-red-500 mt-10">Erro: {error}</p>}
@@ -129,12 +76,12 @@ export default function ProdutosPage() {
           {allProducts.map(product => (
             <ProductCard
               key={product.id}
-              id={String(product.id)} // ProductCard espera ID como string
-              imageUrl={productImages[product.nome] || '/placeholder-produto.png'}
+              id={String(product.id)}
+              imageUrl={product.imagem_url || productImages[product.nome] || '/placeholder-produto.png'}
               name={product.nome}
               price={Number(product.preco)}
               rating={product.nivel_sustentabilidade}
-              // Adicione rating e reviewCount se sua API/banco os fornecer e ProductCard os usar
+              description={product.descricao}
             />
           ))}
         </div>

@@ -24,19 +24,17 @@ const FacebookIcon = () => (
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-gray-900 text-gray-400 py-12">
-      <div className="container mx-auto px-6">
-        <div className="flex flex-col md:flex-row justify-between items-center">
+    <footer className="bg-black text-gray-400 py-12 mt-12 border-t border-gray-800">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-8 md:gap-0">
           {/* Social Media Icons */}
-          <div className="flex space-x-4 mb-4 md:mb-0">
+          <div className="flex space-x-6 mb-6 md:mb-0">
             <a href="#" className="hover:text-green-400 transition-colors"><LinkedInIcon /></a>
             <a href="#" className="hover:text-green-400 transition-colors"><InstagramIcon /></a>
-            {/* <a href="#" className="hover:text-green-400 transition-colors"> M Icon </a> */}
             <a href="#" className="hover:text-green-400 transition-colors"><FacebookIcon /></a>
           </div>
-
           {/* Links */}
-          <div className="flex space-x-6 text-sm">
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-sm">
             <Link href="/politica-de-privacidade" className="hover:text-green-400 transition-colors">
               Política de privacidade
             </Link>
@@ -45,7 +43,7 @@ const Footer: React.FC = () => {
             </Link>
           </div>
         </div>
-        <div className="text-center text-xs mt-8 border-t border-gray-700 pt-8">
+        <div className="text-center text-xs mt-10 border-t border-gray-800 pt-8">
           © {new Date().getFullYear()} Oasi. Todos os direitos reservados.
         </div>
       </div>

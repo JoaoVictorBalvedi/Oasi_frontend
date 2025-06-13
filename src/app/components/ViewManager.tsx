@@ -12,6 +12,7 @@ const Vender = dynamic(() => import('../views/Vender'), { ssr: false });
 const Carrinhos = dynamic(() => import('../views/Carrinhos'), { ssr: false });
 const Conta = dynamic(() => import('../views/Conta'), { ssr: false });
 const Login = dynamic(() => import('../views/Login'), { ssr: false });
+const ProdutoDetalhe = dynamic(() => import('../views/ProdutoDetalhe'), { ssr: false });
 
 const ViewManager = () => {
   const { currentView } = useNavigation();
@@ -41,6 +42,8 @@ const ViewManager = () => {
       return <Conta />;
     case 'login':
       return <Login />;
+    case 'produto-detalhe':
+      return <ProdutoDetalhe />;
     default:
       return <Home />;
   }

@@ -7,6 +7,7 @@ import Button from './button';
 import SelectCartModal from './SelectCardModal';
 import ProductModal from './ProductModal';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '../context/NavigationContext';
 
 interface ProductCardProps {
   id: string;
@@ -36,6 +37,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   description,
 }) => {
   const { user } = useAuth();
+  const { setView, setSelectedProductId } = useNavigation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [userCarts, setUserCarts] = useState<CartForSelection[]>([]);
@@ -121,35 +123,43 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <>
-      <div className="group bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl shadow-xl overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/10 hover:-translate-y-1">
+      <div className="group bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl shadow-lg overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/20 hover:-translate-y-1 border border-gray-700/40">
         <div 
           className="flex-grow cursor-pointer" 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            console.log('Product clicked:', {
+              id: productIdString,
+              name: name,
+              price: price
+            });
+            setSelectedProductId(productIdString);
+            setView('produto-detalhe');
+          }}
         >
-          <div className="relative w-full h-56 sm:h-64 overflow-hidden">
+          <div className="relative w-full h-48 sm:h-56 md:h-64 overflow-hidden">
             <Image
               src={imageUrl}
               alt={name}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               style={{ objectFit: 'cover' }}
-              className="group-hover:scale-110 transition-transform duration-500 ease-out"
+              className="group-hover:scale-105 transition-transform duration-500 ease-out"
               priority={true}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
-          <div className="p-5 flex-grow">
-            <h3 className="text-lg font-semibold text-white mb-2 truncate group-hover:text-green-400 transition-colors duration-300">
+          <div className="p-4 flex-grow flex flex-col justify-between">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-2 truncate group-hover:text-green-400 transition-colors duration-300">
               {name}
             </h3>
-            <div className="flex items-center justify-between">
-              <p className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
                 {currency} {price.toFixed(2)}
               </p>
               {rating && (
                 <div className="flex items-center space-x-1">
                   <span className="text-yellow-400">★</span>
-                  <span className="text-sm text-gray-300">{rating.toFixed(1)}</span>
+                  <span className="text-xs sm:text-sm text-gray-300">{rating.toFixed(1)}</span>
                   {reviewCount && (
                     <span className="text-xs text-gray-400">({reviewCount})</span>
                   )}
@@ -158,12 +168,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           </div>
         </div>
-        <div className="p-5 pt-0">
+        <div className="px-4 pb-4">
           <Button 
             fullWidth 
             onClick={fetchUserCartsAndOpenModal} 
             disabled={isLoadingCarts}
-            className="group-hover:shadow-lg group-hover:shadow-green-500/20"
+            className="group-hover:shadow-lg group-hover:shadow-green-500/20 rounded-lg text-base sm:text-lg py-2"
           >
             {isLoadingCarts ? (
               <span className="flex items-center justify-center">

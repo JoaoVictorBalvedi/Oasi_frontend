@@ -3,11 +3,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '../context/NavigationContext';
 import SectionTitle from "../components/SectionTitle";
 import Button from "../components/button";
 import Link from 'next/link';
 import Image from 'next/image';
 import ProtectedRoute from '../components/ProtectedRoute';
+import Modal from '../components/Modal';
 
 interface Cart {
   id: number;
@@ -39,6 +41,19 @@ export default function CarrinhosPage() {
   const [selectedCartProducts, setSelectedCartProducts] = useState<ProductInCart[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productsMessage, setProductsMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'confirm' | 'error';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'confirm'
+  });
 
   // Buscar carrinhos do usuário
   const fetchUserCarts = async () => {
@@ -138,18 +153,33 @@ export default function CarrinhosPage() {
     setSelectedCartId(cartId);
     setIsLoadingProducts(true);
     setProductsMessage(null);
-    setSelectedCartProducts([]);
 
     try {
-      const response = await fetch(`http://localhost:3001/api/carts/${cartId}/products`);
-      if (!response.ok) throw new Error(`Falha ao buscar produtos do carrinho ${cartId}.`);
-      const data: ProductInCart[] = await response.json();
-      setSelectedCartProducts(data);
-      if (data.length === 0) {
-        setProductsMessage({ text: 'Este carrinho está vazio.', type: 'success' });
+      const response = await fetch(`http://localhost:3001/api/carts/${cartId}/products-details`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao buscar produtos do carrinho');
       }
-    } catch (error: any) {
-      setProductsMessage({ text: error.message || 'Erro ao carregar produtos do carrinho.', type: 'error' });
+
+      const data = await response.json();
+      if (data.length === 0) {
+        setProductsMessage({ text: 'Este carrinho está vazio', type: 'success' });
+        setSelectedCartProducts([]);
+      } else {
+        // Converte o preço para número ao receber os dados
+        const productsWithNumericPrice = data.map((product: any) => ({
+          ...product,
+          preco: parseFloat(product.preco)
+        }));
+        setSelectedCartProducts(productsWithNumericPrice);
+      }
+    } catch (error) {
+      setProductsMessage({ text: 'Falha ao buscar produtos do carrinho', type: 'error' });
+      setSelectedCartProducts([]);
     } finally {
       setIsLoadingProducts(false);
     }
@@ -178,6 +208,99 @@ export default function CarrinhosPage() {
     } catch (error: any) {
       setCartsMessage({ text: error.message || 'Erro ao excluir carrinho.', type: 'error' });
     }
+  };
+
+  // Atualizar quantidade de um produto no carrinho
+  const handleUpdateQuantity = async (cartId: number, productId: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/carts/${cartId}/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ quantidade: newQuantity })
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao atualizar quantidade');
+      }
+
+      // Atualiza a lista de produtos
+      setSelectedCartProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === productId ? { ...p, quantidade: newQuantity } : p
+        )
+      );
+
+      setModalConfig({
+        isOpen: true,
+        title: 'Sucesso',
+        message: 'Quantidade atualizada com sucesso!',
+        type: 'success'
+      });
+    } catch (error) {
+      setModalConfig({
+        isOpen: true,
+        title: 'Erro',
+        message: 'Falha ao atualizar quantidade',
+        type: 'error'
+      });
+    }
+  };
+
+  // Remover produto do carrinho
+  const handleRemoveProduct = async (cartId: number, productId: number) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Remover Produto',
+      message: 'Tem certeza que deseja remover este produto do carrinho?',
+      type: 'confirm',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`http://localhost:3001/api/carts/${cartId}/products/${productId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Falha ao remover produto do carrinho');
+          }
+
+          // Atualiza a lista de produtos
+          setSelectedCartProducts(prevProducts => 
+            prevProducts.filter(p => p.id !== productId)
+          );
+
+          // Se não houver mais produtos, atualiza a lista de carrinhos
+          if (selectedCartProducts.length === 1) {
+            setUserCarts(prevCarrinhos => 
+              prevCarrinhos.filter(c => c.id !== cartId)
+            );
+            setSelectedCartProducts([]);
+            setProductsMessage({ text: 'Este carrinho está vazio', type: 'success' });
+          }
+
+          setModalConfig({
+            isOpen: true,
+            title: 'Sucesso',
+            message: 'Produto removido com sucesso!',
+            type: 'success'
+          });
+        } catch (error) {
+          setModalConfig({
+            isOpen: true,
+            title: 'Erro',
+            message: 'Falha ao remover produto do carrinho',
+            type: 'error'
+          });
+        }
+      }
+    });
   };
 
   return (
@@ -299,19 +422,41 @@ export default function CarrinhosPage() {
                                   )}
                                   <div>
                                     <p className="text-white">{product.nome}</p>
-                                    <p className="text-sm text-gray-300">
-                                      Quantidade: {product.quantidade} | R$ {product.preco.toFixed(2)}
+                                    <p className="text-sm text-gray-300 mt-1">
+                                      R$ {product.preco.toFixed(2)}
                                     </p>
                                   </div>
                                 </div>
-                                <p className="text-white font-medium">
-                                  R$ {(product.preco * product.quantidade).toFixed(2)}
-                                </p>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleUpdateQuantity(cart.id, product.id, product.quantidade - 1)}
+                                      className="text-gray-300 hover:text-white bg-gray-700 rounded px-2 py-1"
+                                      disabled={product.quantidade <= 1}
+                                    >
+                                      -
+                                    </button>
+                                    <span className="text-sm text-gray-300">
+                                      {product.quantidade}
+                                    </span>
+                                    <button
+                                      onClick={() => handleUpdateQuantity(cart.id, product.id, product.quantidade + 1)}
+                                      className="text-gray-300 hover:text-white bg-gray-700 rounded px-2 py-1"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                  <button
+                                    onClick={() => handleRemoveProduct(cart.id, product.id)}
+                                    className="text-red-400 hover:text-red-300 transition-colors"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             ))}
-                            <div className="text-right text-lg font-medium text-white">
-                              Total: R$ {selectedCartProducts.reduce((total, product) => total + (product.preco * product.quantidade), 0).toFixed(2)}
-                            </div>
                           </div>
                         )}
                       </div>
@@ -323,6 +468,15 @@ export default function CarrinhosPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+      />
     </ProtectedRoute>
   );
 }
