@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Button from './button';
 import SelectCartModal from './SelectCardModal';
 import ProductModal from './ProductModal';
+import Modal from './Modal';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '../context/NavigationContext';
 
@@ -43,10 +44,26 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [userCarts, setUserCarts] = useState<CartForSelection[]>([]);
   const [isLoadingCarts, setIsLoadingCarts] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [notificationModal, setNotificationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
 
   const fetchUserCartsAndOpenModal = async () => {
     if (!user?.id) {
-      setFeedbackMessage('Você precisa estar logado para adicionar produtos ao carrinho.');
+      setNotificationModal({
+        isOpen: true,
+        title: 'Atenção',
+        message: 'Você precisa estar logado para adicionar produtos ao carrinho.',
+        type: 'info'
+      });
       return;
     }
 
@@ -62,8 +79,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
       setIsCartModalOpen(true);
     } catch (error: any) {
       console.error("Erro ao buscar carrinhos:", error);
-      setFeedbackMessage(`Erro ao buscar carrinhos: ${error.message}`);
-      alert(`Erro ao buscar carrinhos: ${error.message}. Você precisa ter carrinhos para adicionar produtos.`);
+      setNotificationModal({
+        isOpen: true,
+        title: 'Erro',
+        message: `Erro ao buscar carrinhos: ${error.message}. Você precisa ter carrinhos para adicionar produtos.`,
+        type: 'error'
+      });
     } finally {
       setIsLoadingCarts(false);
     }
@@ -74,13 +95,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
     setFeedbackMessage('Adicionando ao carrinho...');
 
     if (!productIdString) {
-      alert('ID do produto não encontrado.');
+      setNotificationModal({
+        isOpen: true,
+        title: 'Erro',
+        message: 'ID do produto não encontrado.',
+        type: 'error'
+      });
       setFeedbackMessage(null);
       return;
     }
-
-    console.log('ID do produto:', productIdString);
-    console.log('ID do produto convertido:', parseInt(productIdString));
 
     try {
       const response = await fetch(`http://localhost:3001/api/carts/${selectedCartId}/products`, {
@@ -95,13 +118,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
       });
 
       const result = await response.json();
-      console.log('Resposta da API:', result);
 
       if (!response.ok) {
         throw new Error(result.message || 'Falha ao adicionar produto ao carrinho.');
       }
       
-      // Recarrega os carrinhos após adicionar o produto
       if (user?.id) {
         const cartsResponse = await fetch(`http://localhost:3001/api/users/${user.id}/carts`);
         if (cartsResponse.ok) {
@@ -110,13 +131,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
         }
       }
       
-      setFeedbackMessage(result.message || 'Produto adicionado ao carrinho!');
-      alert(result.message || 'Produto adicionado ao carrinho!');
+      setNotificationModal({
+        isOpen: true,
+        title: 'Sucesso',
+        message: result.message || 'Produto adicionado ao carrinho!',
+        type: 'success'
+      });
 
     } catch (error: any) {
       console.error("Erro ao adicionar ao carrinho:", error);
-      setFeedbackMessage(`Erro: ${error.message}`);
-      alert(`Erro: ${error.message}`);
+      setNotificationModal({
+        isOpen: true,
+        title: 'Erro',
+        message: `Erro: ${error.message}`,
+        type: 'error'
+      });
     }
     setTimeout(() => setFeedbackMessage(null), 3000);
   };
@@ -127,11 +156,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <div 
           className="flex-grow cursor-pointer" 
           onClick={() => {
-            console.log('Product clicked:', {
-              id: productIdString,
-              name: name,
-              price: price
-            });
             setSelectedProductId(productIdString);
             setView('produto-detalhe');
           }}
@@ -214,10 +238,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
       <SelectCartModal
         isOpen={isCartModalOpen}
         onClose={() => setIsCartModalOpen(false)}
-        carts={userCarts}
         onSelectCart={(cartId) => handleSelectCartAndAddProduct(cartId)}
         productName={name}
       />
+
+      <Modal
+        isOpen={notificationModal.isOpen}
+        onClose={() => setNotificationModal(prev => ({ ...prev, isOpen: false }))}
+        title={notificationModal.title}
+        type={notificationModal.type}
+      >
+        {notificationModal.message}
+      </Modal>
     </>
   );
 };

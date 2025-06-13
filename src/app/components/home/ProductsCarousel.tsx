@@ -10,8 +10,20 @@ interface Product {
   nome: string;
   preco: number;
   imagem_url: string;
+  nivel_sustentabilidade?: number;
+  descricao?: string;
   // ... outros campos se necessários
 }
+
+// Mapeamento de produtos com suas imagens
+const productImages: { [key: string]: string } = {
+  'Ecobag de Algodão Orgânico': '/ecobag.png',
+  'Kit Escovas de Dente de Bambu (4un)': '/escova.png',
+  'Garrafa Térmica Inox Sustentável': '/garrafa.png',
+  'Canudos de Inox Reutilizáveis (Kit)': '/canudo.png',
+  'Vaso Auto Irrigável Pequeno': '/vaso.png',
+  'Caderno Ecológico Reciclado': '/caderno.png'
+};
 
 const ProductsCarousel: React.FC = () => {
   const [promoProducts, setPromoProducts] = useState<Product[]>([]);
@@ -56,9 +68,11 @@ const ProductsCarousel: React.FC = () => {
             <div key={product.id} className="flex-shrink-0 w-72 sm:w-80">
               <ProductCard
                 id={String(product.id)}
-                imageUrl={product.imagem_url || '/images/placeholder-produto.png'}
+                imageUrl={productImages[product.nome] || '/placeholder-produto.png'}
                 name={product.nome}
                 price={Number(product.preco)}
+                rating={product.nivel_sustentabilidade}
+                description={product.descricao}
               />
             </div>
           ))}

@@ -36,12 +36,36 @@ export default function ProdutoDetalhePage() {
     if (id) fetchProduct();
   }, [id]);
 
+  // Mapeamento fixo entre nome do produto e nome real do arquivo de imagem (igual homepage)
+  const productImageMap: Record<string, string> = {
+    'Ecobag de Algodão Orgânico': '/ecobag.png',
+    'Kit Escovas de Dente de Bambu (4un)': '/escova.png',
+    'Garrafa Térmica Inox Sustentável': '/garrafa.png',
+    'Canudos de Inox Reutilizáveis (Kit)': '/canudo.png',
+    'Vaso Auto Irrigável Pequeno': '/vaso.png',
+    'Caderno Ecológico Reciclado': '/caderno.png',
+    // Adicione outros produtos conforme necessário
+  };
+
+  function getProductImage(produto: Product) {
+    if (productImageMap[produto.nome]) return productImageMap[produto.nome];
+    return '/placeholder.png';
+  }
+
   if (loading) return <div className="text-center py-10">Carregando...</div>;
   if (!product) return <div className="text-center py-10 text-red-500">Produto não encontrado.</div>;
 
   return (
     <div className="min-h-screen bg-black/95 py-8 px-2 sm:px-6">
       <div className="max-w-5xl mx-auto">
+        {/* Debug temporário */}
+        <div className="mb-4 p-2 bg-yellow-100 text-black rounded text-xs">
+          <strong>DEBUG:</strong><br />
+          Produto: <b>{product.nome}</b><br />
+          Imagem buscada: <b>{getProductImage(product)}</b><br />
+          Chaves do mapeamento:<br />
+          <ul>{Object.keys(productImageMap).map((k) => <li key={k}>{k}</li>)}</ul>
+        </div>
         {/* Botão de voltar */}
         <button onClick={() => router.back()} className="mb-6 flex items-center text-gray-300 hover:text-green-400 transition font-medium">
           <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -53,12 +77,13 @@ export default function ProdutoDetalhePage() {
           <div className="w-full md:w-1/2 flex justify-center items-center">
             <div className="bg-black rounded-xl border border-gray-800 p-4 w-full flex justify-center items-center">
               <Image
-                src={product.imagem_url}
+                src={getProductImage(product)}
                 alt={product.nome}
                 width={400}
                 height={400}
                 className="rounded-lg object-contain max-h-80 w-auto h-auto"
                 style={{ maxWidth: '100%' }}
+                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
               />
             </div>
           </div>

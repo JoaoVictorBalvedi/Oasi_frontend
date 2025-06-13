@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Button from "../components/button";
 import { useNavigation } from "../context/NavigationContext";
@@ -36,14 +36,34 @@ export default function ProdutoDetalhe() {
     isOpen: boolean;
     title: string;
     message: string;
-    type: 'success' | 'confirm' | 'error';
+    type: 'success' | 'error' | 'info' | 'confirm';
     onConfirm?: () => void;
   }>({
     isOpen: false,
     title: '',
     message: '',
-    type: 'confirm'
+    type: 'info'
   });
+  const [comentarios, setComentarios] = useState<any[]>([]);
+  const [comentarioTexto, setComentarioTexto] = useState("");
+  const [comentarioLoading, setComentarioLoading] = useState(false);
+  const comentarioInputRef = useRef<HTMLInputElement>(null);
+
+  // Mapeamento fixo entre nome do produto e nome real do arquivo de imagem (igual homepage)
+  const productImageMap: Record<string, string> = {
+    'Ecobag de Algodão Orgânico': '/ecobag.png',
+    'Kit Escovas de Dente de Bambu (4un)': '/escova.png',
+    'Garrafa Térmica Inox Sustentável': '/garrafa.png',
+    'Canudos de Inox Reutilizáveis (Kit)': '/canudo.png',
+    'Vaso Auto Irrigável Pequeno': '/vaso.png',
+    'Caderno Ecológico Reciclado': '/caderno.png',
+    // Adicione outros produtos conforme necessário
+  };
+
+  function getProductImage(produto: Product) {
+    if (productImageMap[produto.nome]) return productImageMap[produto.nome];
+    return '/placeholder.png';
+  }
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -104,6 +124,21 @@ export default function ProdutoDetalhe() {
     }
     fetchProduct();
   }, [selectedProductId, setView]);
+
+  // Buscar comentários ao carregar produto
+  useEffect(() => {
+    async function fetchComentarios() {
+      if (!product?.id) return;
+      try {
+        const res = await fetch(`http://localhost:3001/api/products/${product.id}/comentarios`);
+        const data = await res.json();
+        setComentarios(data);
+      } catch (e) {
+        setComentarios([]);
+      }
+    }
+    if (product?.id) fetchComentarios();
+  }, [product?.id]);
 
   const fetchUserCartsAndOpenModal = async () => {
     if (!user?.id) {
@@ -179,6 +214,30 @@ export default function ProdutoDetalhe() {
     setTimeout(() => setFeedbackMessage(null), 3000);
   };
 
+  // Adicionar novo comentário
+  async function handleAddComentario(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.id || !comentarioTexto.trim()) return;
+    setComentarioLoading(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/products/${product?.id}/comentarios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_usuario: user.id, texto: comentarioTexto })
+      });
+      if (!res.ok) throw new Error('Erro ao adicionar comentário');
+      setComentarioTexto("");
+      if (comentarioInputRef.current) comentarioInputRef.current.value = "";
+      // Atualiza lista
+      const updated = await fetch(`http://localhost:3001/api/products/${product?.id}/comentarios`).then(r => r.json());
+      setComentarios(updated);
+    } catch (e) {
+      alert('Erro ao adicionar comentário');
+    } finally {
+      setComentarioLoading(false);
+    }
+  }
+
   if (loading) return <div className="text-center py-10">Carregando...</div>;
   if (!product) return <div className="text-center py-10 text-red-500">Produto não encontrado.</div>;
 
@@ -202,7 +261,7 @@ export default function ProdutoDetalhe() {
           <div className="w-full md:w-1/2 flex justify-center items-center">
             <div className="bg-black rounded-xl border border-gray-800 p-4 w-full flex justify-center items-center">
               <Image
-                src={product.imagem_url}
+                src={getProductImage(product)}
                 alt={product.nome}
                 width={400}
                 height={400}
@@ -281,9 +340,54 @@ export default function ProdutoDetalhe() {
         onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
         onConfirm={modalConfig.onConfirm}
         title={modalConfig.title}
-        message={modalConfig.message}
         type={modalConfig.type}
-      />
+      >
+        {modalConfig.message}
+      </Modal>
+
+      {/* Seção de comentários */}
+      <div className="max-w-5xl mx-auto mt-12">
+        <h2 className="text-xl font-bold text-white mb-4">Comentários</h2>
+        {/* Formulário para adicionar comentário */}
+        {user ? (
+          <form onSubmit={handleAddComentario} className="flex gap-2 mb-6">
+            <input
+              ref={comentarioInputRef}
+              type="text"
+              className="flex-1 p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
+              placeholder="Escreva um comentário..."
+              value={comentarioTexto}
+              onChange={e => setComentarioTexto(e.target.value)}
+              disabled={comentarioLoading}
+              maxLength={300}
+            />
+            <button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-lg transition disabled:opacity-60"
+              disabled={comentarioLoading || !comentarioTexto.trim()}
+            >
+              {comentarioLoading ? 'Enviando...' : 'Comentar'}
+            </button>
+          </form>
+        ) : (
+          <div className="mb-6 text-gray-400">Faça login para comentar.</div>
+        )}
+        {/* Lista de comentários */}
+        <div className="space-y-4">
+          {comentarios.length === 0 && (
+            <div className="text-gray-500">Nenhum comentário ainda.</div>
+          )}
+          {comentarios.map((c) => (
+            <div key={c.id} className="bg-gray-800 rounded-lg p-4 flex flex-col">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-green-400">{c.usuario_nome || 'Usuário'}</span>
+                <span className="text-xs text-gray-400">{new Date(c.data).toLocaleString('pt-BR')}</span>
+              </div>
+              <div className="text-gray-200">{c.texto}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 } 

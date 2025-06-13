@@ -33,13 +33,13 @@ const SelectCartModal: React.FC<SelectCartModalProps> = ({
     isOpen: boolean;
     title: string;
     message: string;
-    type: 'success' | 'confirm' | 'error';
+    type: 'success' | 'error' | 'info' | 'confirm';
     onConfirm?: () => void;
   }>({
     isOpen: false,
     title: '',
     message: '',
-    type: 'confirm'
+    type: 'info'
   });
 
   // Buscar carrinhos do usuário quando o modal abrir
@@ -171,9 +171,10 @@ const SelectCartModal: React.FC<SelectCartModalProps> = ({
         onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
         onConfirm={modalConfig.onConfirm}
         title={modalConfig.title}
-        message={modalConfig.message}
         type={modalConfig.type}
-      />
+      >
+        {modalConfig.message}
+      </Modal>
     </>
   );
 };

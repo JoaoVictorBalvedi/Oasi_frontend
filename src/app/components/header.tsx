@@ -19,12 +19,12 @@ const Header = () => {
   return (
     <header className="bg-black text-white shadow-md sticky top-0 z-50 w-full">
       <nav className="max-w-[1440px] mx-auto px-4 sm:px-8 py-3 flex items-center justify-between relative">
-        {/* Logo circular */}
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setView('home')}>
-          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow">
-            <Image src="/logo-oasi.png" alt="Logo Oasi" width={36} height={36} />
+        {/* Logo e nome totalmente à esquerda */}
+        <div className="flex items-center space-x-5 cursor-pointer mr-auto" onClick={() => setView('home')}>
+          <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow overflow-hidden">
+            <Image src="/logo_oasi.png" alt="Logo Oasi" width={80} height={80} className="rounded-full object-cover" />
           </div>
-          <span className="text-xl font-bold text-black hidden sm:block">Oasi</span>
+          <span className="text-3xl font-extrabold text-black  sm:block flex items-center h-20">Oasi</span>
         </div>
         {/* Menu desktop */}
         <ul className="hidden md:flex flex-1 justify-center space-x-8 text-base font-medium">

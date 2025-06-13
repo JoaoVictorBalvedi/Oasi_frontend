@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 // Importação dinâmica dos componentes
 const Home = dynamic(() => import('../views/Home'), { ssr: false });
-const Produtos = dynamic(() => import('../views/Produtos'), { ssr: false });
+const Produtos = dynamic(() => import('../produtos/page'), { ssr: false });
 const Comunidade = dynamic(() => import('../views/Comunidade'), { ssr: false });
 const Vender = dynamic(() => import('../views/Vender'), { ssr: false });
 const Carrinhos = dynamic(() => import('../views/Carrinhos'), { ssr: false });

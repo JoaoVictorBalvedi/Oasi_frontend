@@ -14,18 +14,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export { metadata };
-
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="flex flex-col min-h-screen bg-gray-900 text-white">
+      <body className="min-h-screen flex flex-col bg-gray-900">
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
 }
+
+export { metadata };
