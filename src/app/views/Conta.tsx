@@ -4,6 +4,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import SectionTitle from "../components/SectionTitle"; // Ajuste o caminho se necessário
 import Button from "../components/button";       // Ajuste o caminho se necessário
+import { FaTree, FaLeaf, FaSeedling } from 'react-icons/fa';
 
 // Componente local simples para inputs do formulário
 const FormInput = ({ label, type = 'text', id, value, placeholder, onChange, disabled = false }: {
@@ -41,6 +42,8 @@ export default function ContaPage() {
   const [telefone, setTelefone] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [sustentabilidade, setSustentabilidade] = useState<{ arvores_plantadas: number, pontos_verdes: number, impacto_kg_co2: number } | null>(null);
+  const [loadingSust, setLoadingSust] = useState(false);
 
   // Buscar dados do usuário ao carregar a página
   useEffect(() => {
@@ -66,6 +69,22 @@ export default function ContaPage() {
 
     fetchUserData();
   }, [userId]); // Dependência: userId (embora fixo, é uma boa prática)
+
+  // Buscar dados de sustentabilidade
+  useEffect(() => {
+    async function fetchSust() {
+      setLoadingSust(true);
+      try {
+        const res = await fetch(`http://localhost:3001/api/users/${userId}/sustentabilidade`);
+        if (res.ok) {
+          setSustentabilidade(await res.json());
+        }
+      } finally {
+        setLoadingSust(false);
+      }
+    }
+    fetchSust();
+  }, [userId]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -96,6 +115,16 @@ export default function ContaPage() {
       setIsLoading(false);
     }
   };
+
+  // Plantar árvore
+  async function handlePlantarArvore() {
+    setLoadingSust(true);
+    await fetch(`http://localhost:3001/api/users/${userId}/plantar-arvore`, { method: 'POST' });
+    // Atualiza painel
+    const res = await fetch(`http://localhost:3001/api/users/${userId}/sustentabilidade`);
+    if (res.ok) setSustentabilidade(await res.json());
+    setLoadingSust(false);
+  }
 
   if (isLoading && !nome && !email) { // Mostra loading inicial apenas se não houver dados ainda
     return (
@@ -151,6 +180,30 @@ export default function ContaPage() {
             </div>
           </div>
         </form>
+      </div>
+
+      {/* Painel de sustentabilidade */}
+      <div className="mt-8 max-w-2xl mx-auto bg-green-900/20 p-6 sm:p-8 rounded-lg shadow flex flex-col sm:flex-row items-center gap-8">
+        <div className="flex-1 flex flex-col items-center">
+          <FaTree className="text-green-500 text-4xl mb-2" />
+          <div className="text-2xl font-bold text-green-400">{loadingSust || !sustentabilidade ? '--' : sustentabilidade.arvores_plantadas}</div>
+          <div className="text-green-200 text-sm">Árvores Plantadas</div>
+        </div>
+        <div className="flex-1 flex flex-col items-center">
+          <FaLeaf className="text-green-400 text-3xl mb-2" />
+          <div className="text-2xl font-bold text-green-300">{loadingSust || !sustentabilidade ? '--' : sustentabilidade.pontos_verdes}</div>
+          <div className="text-green-200 text-sm">Pontos Verdes</div>
+        </div>
+        <div className="flex-1 flex flex-col items-center">
+          <FaSeedling className="text-green-300 text-3xl mb-2" />
+          <div className="text-2xl font-bold text-green-200">{loadingSust || !sustentabilidade ? '--' : sustentabilidade.impacto_kg_co2 + ' kg'}</div>
+          <div className="text-green-200 text-sm">CO₂ Economizado</div>
+        </div>
+        <div className="flex-1 flex flex-col items-center">
+          <button onClick={handlePlantarArvore} className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg transition mt-4 sm:mt-0" disabled={loadingSust}>
+            {loadingSust ? 'Plantando...' : 'Plantar Árvore'}
+          </button>
+        </div>
       </div>
     </div>
   );
