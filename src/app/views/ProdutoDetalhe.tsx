@@ -296,7 +296,7 @@ export default function ProdutoDetalhe() {
               </div>
             )}
             <div className="flex flex-col sm:flex-row gap-4 mt-6">
-              <Button variant="primary" size="lg" className="flex-1">Comprar</Button>
+              {/* <Button variant="primary" size="lg" className="flex-1">Comprar</Button> */}
               <Button 
                 variant="secondary" 
                 size="lg" 
